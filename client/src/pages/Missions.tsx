@@ -46,6 +46,12 @@ interface MissionsResponse {
   };
 }
 
+interface NewMissionResponse{
+  title:String,
+  date:any
+  operator: String,
+}
+
 const getMissions = async (
   sortField: SortField,
   sortDesc?: Boolean
@@ -72,6 +78,58 @@ const getMissions = async (
   );
 };
 
+const addNewMission = async (
+  title: String | null,
+  operator: String | null,
+  date: Date | null
+): Promise<NewMissionResponse> => {
+  return await fetchGraphQL(
+    `
+    mutation ($title: String!, $operator:String!,$date:DateTime!)
+    {
+      createMission(mission: 
+      {
+        title: $title,
+        operator: $operator,
+        launch: {
+        date: $date,
+        vehicle: "Vulture 9",
+        location: {
+          name: "Cape Canaveral SLC-40",
+          longitude: -80.57718,
+          latitude: -28.562106
+        }
+      },
+      orbit: {
+        periapsis: 200,
+        apoapsis: 300,
+        inclination: 36
+      },
+      payload: {
+        capacity: 22000,
+        available: 7000
+      }
+    }
+    ) 
+    {
+      id
+      title
+      operator
+      launch {
+        date
+      }
+    }
+  }
+`,
+{
+  title: title,
+  operator: operator,
+  date: date,
+}
+);
+}
+
+
 const Missions = (): JSX.Element => {
   const [missions, setMissions] = useState<Mission[] | null>(null);
   const [newMissionOpen, setNewMissionOpen] = useState(false);
@@ -79,6 +137,8 @@ const Missions = (): JSX.Element => {
   const [sortDesc, setSortDesc] = useState<boolean>(false);
   const [sortField, setSortField] = useState<SortField>("Title");
   const [errMessage, setErrMessage] = useState<String | null>(null);
+  const [titleInput, setTitleInput] = useState<String|null>(null);
+  const [operatorInput, setOperatorInput] = useState<String|null>(null);
 
   const handleErrClose = (event?: SyntheticEvent | Event, reason?: string) => {
     if (reason === "clickaway") return;
@@ -94,6 +154,20 @@ const Missions = (): JSX.Element => {
     setNewMissionOpen(false);
   };
 
+  const save = async () => {
+    await addNewMission(titleInput,operatorInput,tempLaunchDate);
+    getMissions(sortField, sortDesc)
+      .then((result: MissionsResponse) => {
+        setMissions(result.data.Missions);
+      })
+      .catch((err) => {
+        setErrMessage("Failed to load missions.");
+        console.log(err);
+      });
+      handleNewMissionClose();
+  };
+
+
   const handleTempLaunchDateChange = (newValue: Date | null) => {
     setTempLaunchDate(newValue);
   };
@@ -104,6 +178,14 @@ const Missions = (): JSX.Element => {
   const handleSortDescClick = () => {
     setSortDesc(!sortDesc);
   };
+
+  const setTitleValue = (event: Event|any) => {  
+    setTitleInput(event.target.value)
+  }
+
+  const setOperatorValue = (event: Event|any) => {  
+    setOperatorInput(event.target.value)
+  }
 
   useEffect(() => {
     getMissions(sortField,sortDesc)
@@ -187,19 +269,21 @@ const Missions = (): JSX.Element => {
               <Grid item>
                 <TextField
                   autoFocus
-                  id="name"
-                  label="Name"
+                  id="title"
+                  label="Title"
                   variant="standard"
                   fullWidth
+                  onChange={setTitleValue}
                 />
               </Grid>
               <Grid item>
                 <TextField
                   autoFocus
-                  id="desc"
-                  label="Description"
+                  id="operator"
+                  label="Operator"
                   variant="standard"
                   fullWidth
+                  onChange={setOperatorValue}
                 />
               </Grid>
 
@@ -207,7 +291,7 @@ const Missions = (): JSX.Element => {
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                   <DateTimePicker
                     minDate={new Date()}
-                    minTime={new Date()}
+                    //minTime={new Date()}
                     label="Launch Date"
                     value={tempLaunchDate}
                     onChange={handleTempLaunchDateChange}
@@ -221,7 +305,7 @@ const Missions = (): JSX.Element => {
           </DialogContent>
           <DialogActions>
             <Button onClick={handleNewMissionClose}>Cancel</Button>
-            <Button onClick={handleNewMissionClose}>Save</Button>
+            <Button onClick={save}>Save</Button>
           </DialogActions>
         </Dialog>
       </Container>
