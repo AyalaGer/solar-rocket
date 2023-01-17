@@ -30,3 +30,9 @@ export type Payload = {
   available: Number;
 }
 
+export type Delivery ={
+  icon:string;
+  quantity:Number;
+  type:string;
+  unit:string;
+}
